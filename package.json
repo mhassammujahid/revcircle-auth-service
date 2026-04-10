@@ -1,0 +1,25 @@
+{
+  "name": "revcircle-prior-auth-api",
+  "version": "1.0.0",
+  "description": "Prior Authorization API with SQLite database and Puter.js AI fallback",
+  "license": "MIT",
+  "main": "src/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start":        "node src/index.js",
+    "dev":          "node --watch src/index.js",
+    "seed":         "node src/db/seed.js",
+    "build:ui":     "cd frontend-react && npm install && npm run build",
+    "dev:ui":       "cd frontend-react && npm run dev",
+    "setup":        "npm install && npm run build:ui"
+  },
+  "dependencies": {
+    "node-sqlite3-wasm": "^0.8.55",
+    "cors":              "^2.8.5",
+    "express":           "^4.19.2",
+    "uuid":              "^9.0.1"
+  }
+}
