@@ -10,7 +10,25 @@
  * Docs: https://docs.puter.com/AI/chat/
  */
 
-const PUTER_ENDPOINT = 'https://api.puter.com/drivers/call';
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const { init } = require("@heyputer/puter.js/src/init.cjs");
+
+const PUTER_AUTH_TOKEN = process.env.PUTER_AUTH_TOKEN;
+let puterClient;
+
+function getPuterClient() {
+  if (!PUTER_AUTH_TOKEN) {
+    throw new Error(
+      "Missing PUTER_AUTH_TOKEN. Set it to your Puter auth token.",
+    );
+  }
+  if (!puterClient) {
+    puterClient = init(PUTER_AUTH_TOKEN);
+  }
+  return puterClient;
+}
 
 const SYSTEM_PROMPT = `You are an expert in US healthcare prior authorization rules.
 Given a payer name and CPT procedure code, predict whether prior authorization is likely required.
@@ -33,47 +51,33 @@ Rules:
 export async function predictAuth(payer, cpt) {
   const userMessage = `Payer: ${payer}\nCPT Code: ${cpt}\n\nPredict whether this payer requires prior authorization for this CPT code.`;
 
-  const body = {
-    interface: 'puter-chat-completion',
-    driver: 'claude-sonnet-4',   // uses Claude Sonnet via Puter
-    test_mode: false,
-    method: 'complete',
-    args: {
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user',   content: userMessage },
-      ],
-    },
-  };
+  const puter = getPuterClient();
+  const response = await puter.ai.chat(
+    [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userMessage },
+    ],
+    { model: "claude-sonnet-4" },
+  );
 
-  const response = await fetch(PUTER_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const rawText =
+    typeof response === "string"
+      ? response
+      : (response?.message?.content?.[0]?.text ?? "");
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Puter API error ${response.status}: ${text}`);
-  }
-
-  const data = await response.json();
-
-  // Puter returns: { result: { message: { content: [{ text: "..." }] } } }
-  const rawText = data?.result?.message?.content?.[0]?.text
-    ?? data?.result?.message?.content
-    ?? '';
-
-  if (!rawText) throw new Error('Empty response from Puter AI.');
+  if (!rawText) throw new Error("Empty response from Puter AI.");
 
   // Strip accidental markdown fences
-  const clean = rawText.replace(/^```(?:json)?\s*/m, '').replace(/\s*```$/m, '').trim();
+  const clean = rawText
+    .replace(/^```(?:json)?\s*/m, "")
+    .replace(/\s*```$/m, "")
+    .trim();
   const parsed = JSON.parse(clean);
 
   return {
-    auth_required:    (parsed.auth_required    ?? 'yes').toLowerCase(),
-    confidence:       (parsed.confidence       ?? 'low').toLowerCase(),
+    auth_required: (parsed.auth_required ?? "yes").toLowerCase(),
+    confidence: (parsed.confidence ?? "low").toLowerCase(),
     confidence_score: parseFloat(parsed.confidence_score ?? 0.5),
-    reasoning:        parsed.reasoning         ?? 'No reasoning provided.',
+    reasoning: parsed.reasoning ?? "No reasoning provided.",
   };
 }

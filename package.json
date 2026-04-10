@@ -6,7 +6,7 @@
   "main": "src/index.js",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=24"
   },
   "scripts": {
     "start":        "node src/index.js",
@@ -17,6 +17,8 @@
     "setup":        "npm install && npm run build:ui"
   },
   "dependencies": {
+    "@heyputer/puter.js": "latest",
+    "dotenv": "^16.4.5",
     "node-sqlite3-wasm": "^0.8.55",
     "cors":              "^2.8.5",
     "express":           "^4.19.2",
